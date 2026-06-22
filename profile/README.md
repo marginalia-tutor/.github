@@ -16,10 +16,10 @@ Named after the ancient practice of writing notes in the margins of books, Margi
 
 ## How it works
 
-1. **Pick a course** -- browse the catalog of available lessons.
-2. **Read a lesson** -- each lesson is displayed alongside a chat panel.
-3. **Ask questions** -- type any question about the material.
-4. **Get grounded answers** -- the backend retrieves the most relevant passages from the lesson, sends them to an LLM together with your question, and returns an answer with citations back to the source.
+1. **Pick a course** — browse the catalog of available lessons.
+2. **Read a lesson** — each lesson is displayed alongside a chat panel.
+3. **Ask questions** — type any question about the material.
+4. **Get grounded answers** — the backend retrieves the most relevant passages from the lesson, sends them to an LLM together with your question, and returns an answer with citations back to the source.
 
 Because the LLM only sees the retrieved lesson text (not its full training data), the answers stay on-topic and verifiable.
 
