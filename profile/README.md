@@ -81,4 +81,4 @@ Key components in the backend:
 
 ## Status
 
-Live at [marginalia.hams69.workers.dev](https://marginalia.hams69.workers.dev). Sample courses on REST APIs and React Hooks are pre-loaded for demonstration.
+Live. Sample courses on REST APIs and React Hooks are pre-loaded for demonstration.
