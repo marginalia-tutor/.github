@@ -27,14 +27,14 @@ Because the LLM only sees the retrieved lesson text (not its full training data)
 
 ## Features
 
-- Course and lesson management with structured content
-- Reading progress tracking per client
-- Retrieval-Augmented Generation (RAG) pipeline:
-  - Lesson text is chunked and embedded into 384-dimensional vectors using a local ONNX model (`all-MiniLM-L6-v2`)
-  - Queries are embedded the same way and matched via cosine similarity
-  - Top passages are fed to the LLM alongside the question for citation-grounded answers
-- Chat history preserved per course
-- Mobile-friendly reading interface
+- **Course reader** with structured lessons, progress tracking, and completion indicators
+- **RAG pipeline** — lesson text is chunked and embedded (384-dim ONNX vectors), questions are retrieved via hybrid search (cosine similarity + BM25 scoring), and the LLM generates grounded, cited answers
+- **SSE streaming** — tutor responses stream token-by-token instead of waiting for the full answer
+- **Citation source highlighting** — hovering a citation highlights the exact source sentence in the lesson text
+- **Multi-provider LLM fallback** — configure a secondary LLM endpoint; if the primary errors, the fallback is tried transparently
+- **JWT auth** — real accounts with email/password login, co-existing with anonymous access (no migration needed)
+- **Conversation memory** — last 6 turns sent as context; full history preserved per course
+- **Responsive layout** — three-column reader collapses to mobile-friendly slide-over panels below tablet width
 
 ---
 
@@ -46,9 +46,10 @@ Because the LLM only sees the retrieved lesson text (not its full training data)
 │   (Cloudflare)      │ ◄──► │     (Render)                     │
 │                     │      │                                  │
 │  CourseList         │      │  /api/courses   /api/lessons     │
-│  CourseDetail       │      │  /api/progress  /api/tutor/chat  │
-│  LessonReader       │      │  /api/health                      │
-│  TutorChat          │      │                                  │
+│  CourseDetail       │      │  /api/progress  /api/auth/*      │
+│  LessonReader       │      │  /api/tutor/chat                 │
+│  TutorChat          │      │  /api/tutor/chat/stream          │
+│  Auth (login/reg)   │      │  /api/health                     │
 └─────────────────────┘      └──────────┬───────────────────────┘
                                         │
                          ┌──────────────┴──────────────┐
@@ -65,15 +66,16 @@ Key components in the backend:
 | Component | Role |
 |-----------|------|
 | **Embeddings service** | Runs a quantized ONNX model locally via @xenova/transformers. Produces 384-dim vectors for both lesson chunks and user queries. No external API calls. |
-| **Retrieval service** | Brute-force cosine similarity search across all chunks of the current lesson. No vector DB needed at portfolio scale. |
-| **LLM service** | Sends the retrieved passages + user question to DeepSeek V4 Flash Free via OpenCode API. Instructs the model to answer only from the provided text and cite passages. |
-| **Tutor route** | Orchestrates embed -> retrieve -> ask -> return, preserving chat history per client + course. |
+| **Retrieval service** | Hybrid search combining cosine similarity (env-configurable weight, default 0.6) with BM25 Okapi scoring (weight 0.4). Scores are min-max normalized and the top-K chunks are returned. No vector DB needed at portfolio scale. |
+| **LLM service** | Multi-provider chat completions via plain `fetch()` to any OpenAI-compatible endpoint. Supports a secondary fallback provider on error, configurable timeout per provider, and SSE streaming. Temperature 0.3, max 2000 tokens. |
+| **Auth middleware** | Optional JWT verification — attaches `req.user` if a valid Bearer token is present, silently continues for anonymous users. Both `userId` and `clientId` paths are supported throughout the data model. |
+| **Tutor route** | Orchestrates embed -> hybrid retrieve -> LLM generate, with both `/chat` (full response) and `/chat/stream` (SSE tokens) endpoints. Persists conversation history. |
 
 ---
 
 ## Stack
 
-- **Backend:** Node.js, Express, MongoDB (Atlas), @xenova/transformers (ONNX), OpenCode API (DeepSeek V4 Flash Free)
+- **Backend:** Node.js, Express, MongoDB (Atlas), @xenova/transformers (ONNX), OpenCode API (DeepSeek V4 Flash Free), bcryptjs, jsonwebtoken
 - **Frontend:** React 18, Vite 6, Tailwind CSS, React Router
 - **Infrastructure:** Render (backend), Cloudflare Workers (frontend), MongoDB Atlas (database)
 
@@ -81,4 +83,4 @@ Key components in the backend:
 
 ## Status
 
-Live. Sample courses on REST APIs and React Hooks are pre-loaded for demonstration.
+Live. All six planned enhancements are implemented: multi-provider LLM fallback, hybrid retrieval, SSE streaming, citation source highlighting, JWT auth, and responsive layout. Sample courses on REST APIs and React Hooks are pre-loaded for demonstration.
