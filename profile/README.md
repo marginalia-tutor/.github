@@ -25,6 +25,41 @@ Because the LLM only sees the retrieved lesson text (not its full training data)
 
 ---
 
+## Architecture decisions
+
+A few choices worth calling out, since the reasoning matters more than the code for a portfolio piece:
+
+**Embeddings stored as plain arrays in MongoDB, similarity computed in app code.** No Atlas Vector Search, no Pinecone/Chroma. At course-library scale (low thousands of chunks) brute-force cosine similarity runs in well under 50ms and keeps the entire stack to "just MongoDB" — one connection string, nothing extra to provision. The migration path if a library grew large is narrow and well-defined: `findRelevantChunks()` in `backend/src/services/retrieval.js` is the only place that would change, to an Atlas `$vectorSearch` aggregation stage.
+
+**No LLM SDK.** `services/embeddings.js` and `services/llm.js` are plain `fetch()` calls against `LLM_BASE_URL`. OpenAI, Groq, DeepSeek, and most others expose an OpenAI-compatible `/chat/completions` and `/embeddings` shape, so the provider is an environment variable, not a dependency.
+
+**Auth is optional.** The app started with anonymous `clientId` in `localStorage` (no login system) to get the core RAG demo working first. Real JWT accounts were layered on in Phase 4, with the data model accepting both `userId` and `clientId` so both paths coexist without migration.
+
+**Hand-rolled chunking, not a text-splitter package.** `chunking.js` is a ~30-line paragraph-aware splitter with overlap. Worth owning outright rather than importing for something this size — and it's a better interview answer than "I imported langchain's splitter."
+
+**Citations carry a snippet and a score, not just a lesson name.** The margin panel shows the actual excerpt the model was given, so you can sanity check whether the retrieval — not just the generation — got it right. Faithfulness you can eyeball per-answer instead of measuring after the fact.
+
+---
+
+## Project structure
+
+```
+marginalia/
+  backend/
+    src/
+      models/        Course, Lesson, Chunk, Progress, ChatMessage, User
+      services/      chunking, embeddings, llm, retrieval, bm25
+      routes/        courses, lessons, progress, tutor, auth
+      scripts/seed.js loads sample courses + embeds them
+  frontend/
+    src/
+      context/       AuthContext
+      pages/         CourseList, CourseDetail, LoginPage, RegisterPage
+      components/    MarginTutor, LessonNav, Citation, Header, CourseCard
+```
+
+---
+
 ## Features
 
 - **Course reader** with structured lessons, progress tracking, and completion indicators
@@ -83,4 +118,17 @@ Key components in the backend:
 
 ## Status
 
-Live. All six planned enhancements are implemented: multi-provider LLM fallback, hybrid retrieval, SSE streaming, citation source highlighting, JWT auth, and responsive layout. Sample courses on REST APIs and React Hooks are pre-loaded for demonstration.
+Live. Sample courses on REST APIs and React Hooks are pre-loaded for demonstration.
+
+### What's been built
+
+The six enhancements originally planned are now all implemented:
+
+| Enhancement | Phase | Status |
+|---|---|---|
+| Multi-provider LLM fallback | 1 | Done |
+| Hybrid retrieval (BM25 + vector cosine) | 1 | Done |
+| Streaming tutor responses over SSE | 2 | Done |
+| Citation source highlighting in lesson text | 2 | Done |
+| Real accounts with JWT auth | 4 | Done |
+| Responsive three-column reader layout | 3 | Done |
