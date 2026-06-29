@@ -2,7 +2,7 @@
 
 **Read the lesson. Question it in the margin.**
 
-Try it at [marginalia.hams69.workers.dev](https://marginalia.hams69.workers.dev)
+Try it at [marginalia.hsnx999.workers.dev](https://marginalia.hsnx999.workers.dev)
 
 ---
 
